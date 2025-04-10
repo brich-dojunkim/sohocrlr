@@ -8,7 +8,7 @@ import os
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
-from utils import safe_click, extract_product_info_from_html, parse_product_info_tables
+from reviewcrawler.utils import safe_click, extract_product_info_from_html, parse_product_info_tables
 
 def standardize_product_info(product_info):
     standard_fields = [
@@ -106,7 +106,7 @@ def crawl_detailed_product_info(driver, product_info=None):
         
         html_source = driver.page_source
         summary_info = parse_summary_info(html_source)
-        from text_based_parser import parse_product_info_by_text
+        from reviewcrawler.text_based_parser import parse_product_info_by_text
         text_based_info = parse_product_info_by_text(html_source)
         for key, value in text_based_info.items():
             if key not in summary_info or not summary_info[key]:

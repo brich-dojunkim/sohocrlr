@@ -2,6 +2,8 @@
 import csv
 import time
 import traceback
+from tqdm import tqdm
+import hashlib
 from driver import setup_driver
 from page_navigation import (
     navigate_to_base_page,
@@ -15,22 +17,35 @@ from page_navigation import (
 from scraper import scrape_product_urls, apply_sort_filter
 from utils import safe_click
 
-def main():
-    # 터미널로부터 최대 depth와 각 depth에서 크롤링할 제품 URL 개수를 입력받음
-    try:
-        max_depth = int(input("몇번째 depth까지 크롤링할 건지 입력하세요 (1 ~ 4): "))
-    except ValueError:
-        print("잘못된 입력입니다. 기본값 4로 설정합니다.")
-        max_depth = 4
+def run_url_crawler(max_depth=None, product_limit=None):
+    """
+    URL 크롤러 실행 함수
+    
+    Args:
+        max_depth: 크롤링할 최대 depth (1-4) 
+        product_limit: 각 depth에서 크롤링할 제품 수
+        
+    Returns:
+        str: 생성된 CSV 파일명
+    """
+    # 인자가 제공되지 않았을 경우 사용자 입력 받기
+    if max_depth is None:
+        try:
+            max_depth = int(input("몇번째 depth까지 크롤링할 건지 입력하세요 (1 ~ 4): "))
+        except ValueError:
+            print("잘못된 입력입니다. 기본값 4로 설정합니다.")
+            max_depth = 4
+    
     if max_depth < 1 or max_depth > 4:
         print("입력 범위가 잘못되었습니다. 1과 4 사이의 숫자로 설정합니다.")
         max_depth = 4
 
-    try:
-        product_limit = int(input("각 depth에서 크롤링할 제품 URL 개수를 입력하세요 (예: 10): "))
-    except ValueError:
-        print("잘못된 입력입니다. 기본값 10으로 설정합니다.")
-        product_limit = 10
+    if product_limit is None:
+        try:
+            product_limit = int(input("각 depth에서 크롤링할 제품 URL 개수를 입력하세요 (예: 10): "))
+        except ValueError:
+            print("잘못된 입력입니다. 기본값 10으로 설정합니다.")
+            product_limit = 10
 
     driver = setup_driver()
     
@@ -60,14 +75,16 @@ def main():
                 for url in urls:
                     writer.writerow(["여성의류", "", "", "", url])
             print(f"\n>> [SUCCESS] 모든 크롤링 완료. URL은 '{csv_filename}'에 저장됨.")
-            return
+            driver.quit()
+            return csv_filename
 
         # 최대 depth >= 2: 2nd depth (소분류) 처리
         subcategory_texts = get_subcategory_items(driver)
         if not subcategory_texts:
             raise Exception("2nd depth 메뉴 항목(소분류)을 찾지 못했습니다.")
         
-        for subcat_idx, subcategory_text in enumerate(subcategory_texts):
+        # tqdm으로 진행률 표시 추가
+        for subcat_idx, subcategory_text in enumerate(tqdm(subcategory_texts, desc="2nd depth 처리")):
             try:
                 print(f"\n>> [INFO] 2nd depth ({subcat_idx+1}/{len(subcategory_texts)}): '{subcategory_text}' 처리 시작")
                 click_subcategory(driver, subcategory_text)
@@ -98,7 +115,8 @@ def main():
                     click_subcategory(driver, subcategory_text)
                     continue
                 
-                for i, first_detail_text in enumerate(first_detail_menu_texts):
+                # tqdm으로 3rd depth 진행률 표시
+                for i, first_detail_text in enumerate(tqdm(first_detail_menu_texts, desc=f"'{subcategory_text}' 3rd depth 처리")):
                     try:
                         print(f"\n>> [INFO] 3rd depth ({i+1}/{len(first_detail_menu_texts)}): '{first_detail_text}' 처리 시작")
                         click_first_detail_menu(driver, first_detail_text)
@@ -131,7 +149,8 @@ def main():
                             click_first_detail_menu(driver, first_detail_text)
                             continue
                         
-                        for j, second_detail_text in enumerate(second_detail_menu_texts):
+                        # tqdm으로 4th depth 진행률 표시
+                        for j, second_detail_text in enumerate(tqdm(second_detail_menu_texts, desc=f"'{first_detail_text}' 4th depth 처리")):
                             retry_count = 0
                             max_retries = 3
                             success = False
@@ -193,6 +212,9 @@ def main():
     
     finally:
         driver.quit()
+    
+    return csv_filename
 
+# 직접 실행 시
 if __name__ == "__main__":
-    main()
+    run_url_crawler()

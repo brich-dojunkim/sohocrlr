@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException, TimeoutException
 
 # 유틸리티 함수 가져오기
-from utils import safe_click, setup_driver
+from reviewcrawler.utils import safe_click, setup_driver
 
 def crawl_product_reviews(target_url, driver=None, max_pages=None, output_csv=None, return_df=False, append_mode=False, product_code=None):
     """

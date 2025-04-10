@@ -16,7 +16,7 @@ from selenium.common.exceptions import NoSuchElementException, ElementNotInterac
 from webdriver_manager.chrome import ChromeDriverManager
 
 # 유틸리티 함수 가져오기
-from utils import safe_click, extract_product_info_from_html, parse_product_info_tables
+from reviewcrawler.utils import safe_click, extract_product_info_from_html, parse_product_info_tables, generate_product_code
 
 class NaverShoppingCrawler:
     """네이버 쇼핑몰 크롤러 클래스"""
@@ -49,13 +49,14 @@ class NaverShoppingCrawler:
             self.driver.quit()
             self.driver = None
     
-    def crawl_product_info(self, target_url, output_csv=None):
+    def crawl_product_info(self, target_url, output_csv=None, external_product_code=None):
         """
         상품 정보 크롤링 함수
         
         Args:
             target_url (str): 상품 페이지 URL
             output_csv (str, optional): 결과를 저장할 CSV 파일명
+            external_product_code (str, optional): 외부에서 제공한 상품 코드
             
         Returns:
             dict: 상품 정보 딕셔너리
@@ -114,13 +115,17 @@ class NaverShoppingCrawler:
                 print(f"- {k}: {v}")
             
             # 상세 상품 정보 수집 및 표준화
-            from product_info import crawl_detailed_product_info, standardize_product_info
+            from reviewcrawler.product_info import crawl_detailed_product_info, standardize_product_info
             product_info = crawl_detailed_product_info(self.driver, product_info)
             standardized_info = standardize_product_info(product_info)
             
-            # 상품 코드 생성 후 저장 (utils.py의 generate_product_code 사용)
-            from utils import generate_product_code
-            product_code = generate_product_code(standardized_info)
+            # 상품 코드 저장
+            # 외부에서 제공된 상품 코드가 있으면 사용, 없으면 생성
+            if external_product_code:
+                product_code = external_product_code
+            else:
+                product_code = generate_product_code(standardized_info)
+            
             standardized_info['PRODUCT_CODE'] = product_code
             self.product_code = product_code  # 클래스 변수에 저장하여 이후 리뷰에서 재사용
             
@@ -139,10 +144,10 @@ class NaverShoppingCrawler:
             print(f"[ERROR] 상품 정보 수집 중 오류 발생: {e}")
             import traceback
             traceback.print_exc()
-            from product_info import standardize_product_info
+            from reviewcrawler.product_info import standardize_product_info
             return standardize_product_info(product_info if 'product_info' in locals() else {})
     
-    def crawl_reviews(self, target_url, max_pages=None, output_csv=None, return_df=False, append_mode=False):
+    def crawl_reviews(self, target_url, max_pages=None, output_csv=None, return_df=False, append_mode=False, product_code=None):
         """
         스마트스토어 상품의 리뷰 데이터 수집
         
@@ -152,11 +157,17 @@ class NaverShoppingCrawler:
             output_csv (str, optional): 결과를 저장할 CSV 파일명
             return_df (bool, optional): 데이터프레임 반환 여부
             append_mode (bool, optional): 기존 CSV에 결과 추가 여부
+            product_code (str, optional): 미리 생성된 상품 코드. 없으면 객체에 저장된 코드 사용
             
         Returns:
             DataFrame: return_df True 시 데이터프레임 반환
         """
-        from review_crawler import crawl_product_reviews
+        from reviewcrawler.review_crawler import crawl_product_reviews
+        
+        # product_code 인자가 없으면 객체의 product_code 사용
+        if product_code is None:
+            product_code = self.product_code
+            
         return crawl_product_reviews(
             target_url=target_url,
             driver=self.driver,
@@ -164,5 +175,5 @@ class NaverShoppingCrawler:
             output_csv=output_csv,
             return_df=return_df,
             append_mode=append_mode,
-            product_code=self.product_code  # 상품 코드 전달
+            product_code=product_code  # 상품 코드 전달
         )

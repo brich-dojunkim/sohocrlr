@@ -93,7 +93,7 @@ def parse_product_info_tables(html_source):
     """
     네이버 스마트스토어 상품 정보 테이블 파싱
     """
-    from text_based_parser import parse_product_info_by_text
+    from reviewcrawler.text_based_parser import parse_product_info_by_text
     product_info = parse_product_info_by_text(html_source)
     if not product_info:
         soup = BeautifulSoup(html_source, 'html.parser')
