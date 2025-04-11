@@ -6,6 +6,29 @@ import os
 from tqdm import tqdm
 from reviewcrawler.crawler import NaverShoppingCrawler
 
+def convert_csv_to_excel(csv_path, excel_path=None):
+    """
+    CSV 파일을 엑셀 파일로 변환합니다.
+    
+    Args:
+        csv_path (str): CSV 파일 경로
+        excel_path (str, optional): 생성할 엑셀 파일 경로 (None인 경우 CSV와 동일한 이름 사용)
+    
+    Returns:
+        str: 생성된 엑셀 파일 경로
+    """
+    if excel_path is None:
+        excel_path = csv_path.replace('.csv', '.xlsx')
+    
+    try:
+        df = pd.read_csv(csv_path, encoding='utf-8-sig')
+        df.to_excel(excel_path, index=False, engine='openpyxl')
+        print(f"Excel 파일 생성 완료: {excel_path}")
+        return excel_path
+    except Exception as e:
+        print(f"Excel 파일 생성 중 오류 발생: {e}")
+        return None
+
 def run_review_crawler(url=None, url_file=None, max_pages=5, output_csv='review_all.csv', 
                       product_output_csv='product_info_all.csv', reviews_only=False, 
                       product_only=False, max_products=None, use_tqdm=True):
@@ -197,14 +220,26 @@ def run_review_crawler(url=None, url_file=None, max_pages=5, output_csv='review_
     if product_info_list and not reviews_only:
         product_info_df = pd.DataFrame(product_info_list)
         if product_output_csv:
-            product_info_df.to_csv(product_output_csv, index=False, encoding='utf-8-sig')
-            print(f"\n제품 정보 저장 완료: {product_output_csv} ({len(product_info_df)}개)")
+            csv_path = product_output_csv
+            excel_path = product_output_csv.replace('.csv', '.xlsx')
+            
+            product_info_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+            print(f"\n제품 정보 CSV 저장 완료: {csv_path} ({len(product_info_df)}개)")
+            
+            # Excel 파일로 변환
+            convert_csv_to_excel(csv_path, excel_path)
     
     if review_dfs and not product_only:
         reviews_df = pd.concat(review_dfs, ignore_index=True) if review_dfs else None
         if output_csv and reviews_df is not None:
-            reviews_df.to_csv(output_csv, index=False, encoding='utf-8-sig')
-            print(f"리뷰 정보 저장 완료: {output_csv} ({len(reviews_df)}개)")
+            csv_path = output_csv
+            excel_path = output_csv.replace('.csv', '.xlsx')
+            
+            reviews_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+            print(f"리뷰 정보 CSV 저장 완료: {csv_path} ({len(reviews_df)}개)")
+            
+            # Excel 파일로 변환
+            convert_csv_to_excel(csv_path, excel_path)
     
     elapsed_time = time.time() - start_time
     print(f"\n총 소요 시간: {elapsed_time:.2f}초")

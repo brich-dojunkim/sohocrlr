@@ -18,6 +18,29 @@ from urlcrawler.driver import setup_driver as setup_url_driver
 from urlcrawler.main import run_url_crawler
 from reviewcrawler.crawler import NaverShoppingCrawler
 
+def convert_csv_to_excel(csv_path, excel_path=None):
+    """
+    CSV 파일을 엑셀 파일로 변환합니다.
+    
+    Args:
+        csv_path (str): CSV 파일 경로
+        excel_path (str, optional): 생성할 엑셀 파일 경로 (None인 경우 CSV와 동일한 이름 사용)
+    
+    Returns:
+        str: 생성된 엑셀 파일 경로
+    """
+    if excel_path is None:
+        excel_path = csv_path.replace('.csv', '.xlsx')
+    
+    try:
+        df = pd.read_csv(csv_path, encoding='utf-8-sig')
+        df.to_excel(excel_path, index=False, engine='openpyxl')
+        print(f"Excel 파일 생성 완료: {excel_path}")
+        return excel_path
+    except Exception as e:
+        print(f"Excel 파일 생성 중 오류 발생: {e}")
+        return None
+
 def crawl_urls(max_depth=None, product_limit=None):
     """
     URL 크롤링 단계 실행
@@ -213,15 +236,27 @@ def crawl_product_info_and_reviews(url_df, max_pages=5, max_products=None, max_r
         
         if product_info_list:
             product_info_df = pd.DataFrame(product_info_list)
-            product_info_df.to_csv('product_info_all.csv', index=False, encoding='utf-8-sig')
-            print(f"\n제품 정보 저장 완료: product_info_all.csv ({len(product_info_df)}개)")
+            product_info_csv = 'product_info_all.csv'
+            product_info_excel = 'product_info_all.xlsx'
+            
+            product_info_df.to_csv(product_info_csv, index=False, encoding='utf-8-sig')
+            print(f"\n제품 정보 저장 완료: {product_info_csv} ({len(product_info_df)}개)")
+            
+            # CSV를 엑셀로 변환
+            convert_csv_to_excel(product_info_csv, product_info_excel)
         else:
             print("\n수집된 제품 정보가 없습니다.")
         
         if review_dfs:
             reviews_df = pd.concat(review_dfs, ignore_index=True)
-            reviews_df.to_csv('review_all.csv', index=False, encoding='utf-8-sig')
-            print(f"리뷰 정보 저장 완료: review_all.csv ({len(reviews_df)}개)")
+            review_csv = 'review_all.csv'
+            review_excel = 'review_all.xlsx'
+            
+            reviews_df.to_csv(review_csv, index=False, encoding='utf-8-sig')
+            print(f"리뷰 정보 저장 완료: {review_csv} ({len(reviews_df)}개)")
+            
+            # CSV를 엑셀로 변환
+            convert_csv_to_excel(review_csv, review_excel)
         else:
             print("수집된 리뷰가 없습니다.")
         
